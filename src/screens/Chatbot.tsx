@@ -31,18 +31,18 @@ const ChatbotScreen = () => {
   const [searching, setSearching] = useState(false);
 
   useEffect(() => {
+    if (selectedRecipeId !== '') {
+      fetchRecipeInfo();
+    }
+  }, [selectedRecipeId]);
+
+  useEffect(() => {
     Voice.onSpeechResults = onSpeechResults;
     Voice.onSpeechError = onSpeechError;
     return () => {
       Voice.destroy().then(Voice.removeAllListeners);
     };
   }, []);
-
-  useEffect(() => {
-    if (selectedRecipeId !== '') {
-      fetchRecipeInfo();
-    }
-  }, [selectedRecipeId]);
 
   const onSpeechResults = (event: any) => {
     const spokenQuery = event.value[0];
