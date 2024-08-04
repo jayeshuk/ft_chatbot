@@ -7,14 +7,17 @@ import {
   FlatList,
   StyleSheet,
   TouchableOpacity,
-  Keyboard
+  Keyboard,
+  ActivityIndicator,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import Voice from '@react-native-voice/voice';
 import axios from 'axios';
 import {Item} from '../types';
 import {SPOONACULAR_API_KEY, SPOONACULAR_API_URL} from '@env';
-import IngredientsAndinstructions, {Ingredient} from '../components/IngredientsAndInstructions';
+import IngredientsAndinstructions, {
+  Ingredient,
+} from '../components/IngredientsAndInstructions';
 
 const ChatbotScreen = () => {
   const [query, setQuery] = useState('');
@@ -24,6 +27,8 @@ const ChatbotScreen = () => {
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [instructions, setInstructions] = useState<string>('');
   const [recipeInfoLoaded, setRecipeInfoLoaded] = useState(false);
+  const [recipeListLoaded, setRecipeListLoaded] = useState(false);
+  const [searching, setSearching] = useState(false);
 
   useEffect(() => {
     Voice.onSpeechResults = onSpeechResults;
@@ -73,6 +78,7 @@ const ChatbotScreen = () => {
 
   const fetchRecipes = async (searchQuery: string) => {
     Keyboard.dismiss();
+    setSearching(true);
     try {
       const response = await axios.get(`${SPOONACULAR_API_URL}/complexSearch`, {
         params: {
@@ -88,7 +94,10 @@ const ChatbotScreen = () => {
         title: item.title,
       }));
       setRecipes(recipeItems);
+      setRecipeListLoaded(true);
+      setSearching(false);
     } catch (error) {
+      setSearching(false);
       console.error('Error fetching recipes:', error);
     }
   };
@@ -118,6 +127,22 @@ const ChatbotScreen = () => {
     fetchRecipes(query);
   };
 
+  const renderRecipeItem = ({item}: {item: any}) => (
+    <TouchableOpacity
+      style={styles.recipeItem}
+      onPress={() => {
+        setSelectedRecipeId(item.id);
+      }}>
+      <Text style={styles.recipeTitle}>{item.title}</Text>
+    </TouchableOpacity>
+  );
+
+  const renderEmptyListNote = () => (
+    <Text style={{flex: 1, textAlign: 'center', margin: 50}}>
+      {recipeListLoaded ? 'No Recipes Found!' : ''}
+    </Text>
+  );
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>RecipeBot</Text>
@@ -144,21 +169,22 @@ const ChatbotScreen = () => {
       <View style={styles.fetchButton}>
         <Button title="Find Recipes" onPress={handleQuerySubmit} />
       </View>
+      {searching && (
+        <View style={{flex: 1, margin: '10%'}}>
+          <ActivityIndicator size={'large'} />
+        </View>
+      )}
       {recipeInfoLoaded ? (
-        <IngredientsAndinstructions ingredients={ingredients} instructions={instructions}  />
+        <IngredientsAndinstructions
+          ingredients={ingredients}
+          instructions={instructions}
+        />
       ) : (
         <FlatList
           data={recipes}
           keyExtractor={item => item.id.toString()}
-          renderItem={({item}) => (
-            <TouchableOpacity
-              style={styles.recipeItem}
-              onPress={() => {
-                setSelectedRecipeId(item.id);
-              }}>
-              <Text style={styles.recipeTitle}>{item.title}</Text>
-            </TouchableOpacity>
-          )}
+          renderItem={renderRecipeItem}
+          ListEmptyComponent={renderEmptyListNote}
         />
       )}
     </View>
