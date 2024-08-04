@@ -6,17 +6,24 @@ import {
   Button,
   FlatList,
   StyleSheet,
+  TouchableOpacity,
+  Keyboard
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import Voice from '@react-native-voice/voice';
 import axios from 'axios';
 import {Item} from '../types';
 import {SPOONACULAR_API_KEY, SPOONACULAR_API_URL} from '@env';
+import IngredientsAndinstructions, {Ingredient} from '../components/IngredientsAndInstructions';
 
 const ChatbotScreen = () => {
   const [query, setQuery] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [recipes, setRecipes] = useState<Item[]>([]);
+  const [selectedRecipeId, setSelectedRecipeId] = useState<string>('');
+  const [ingredients, setIngredients] = useState<Ingredient[]>([]);
+  const [instructions, setInstructions] = useState<string>('');
+  const [recipeInfoLoaded, setRecipeInfoLoaded] = useState(false);
 
   useEffect(() => {
     Voice.onSpeechResults = onSpeechResults;
@@ -26,8 +33,15 @@ const ChatbotScreen = () => {
     };
   }, []);
 
+  useEffect(() => {
+    if (selectedRecipeId !== '') {
+      fetchRecipeInfo();
+    }
+  }, [selectedRecipeId]);
+
   const onSpeechResults = (event: any) => {
     const spokenQuery = event.value[0];
+    setRecipeInfoLoaded(false);
     setQuery(spokenQuery);
     fetchRecipes(spokenQuery);
     setIsListening(false);
@@ -58,15 +72,15 @@ const ChatbotScreen = () => {
   };
 
   const fetchRecipes = async (searchQuery: string) => {
+    Keyboard.dismiss();
     try {
-      const response = await axios.get(SPOONACULAR_API_URL, {
+      const response = await axios.get(`${SPOONACULAR_API_URL}/complexSearch`, {
         params: {
           query: searchQuery,
           apiKey: SPOONACULAR_API_KEY,
-          includeIngredients: true,
         },
       });
-      console.log(response.data.results[0])
+
       const recipeItems: Item[] = response.data.results.map((item: any) => ({
         id: item.id.toString(),
         image: item.image,
@@ -79,13 +93,34 @@ const ChatbotScreen = () => {
     }
   };
 
+  const fetchRecipeInfo = async () => {
+    try {
+      const response = await axios.get(
+        `${SPOONACULAR_API_URL}/${selectedRecipeId}/information`,
+        {
+          params: {
+            apiKey: SPOONACULAR_API_KEY,
+          },
+        },
+      );
+      const {title, image, extendedIngredients, instructions} = response.data;
+      setIngredients(extendedIngredients);
+      setInstructions(instructions);
+      setRecipeInfoLoaded(true);
+    } catch (error) {
+      console.error('Error fetching recipe info:', error);
+      setRecipeInfoLoaded(false);
+    }
+  };
+
   const handleQuerySubmit = () => {
+    setRecipeInfoLoaded(false);
     fetchRecipes(query);
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>ChatBot Screen</Text>
+      <Text style={styles.title}>RecipeBot</Text>
       <View style={{flexDirection: 'row', alignItems: 'center'}}>
         <TextInput
           style={styles.input}
@@ -109,15 +144,23 @@ const ChatbotScreen = () => {
       <View style={styles.fetchButton}>
         <Button title="Find Recipes" onPress={handleQuerySubmit} />
       </View>
-      <FlatList
-        data={recipes}
-        keyExtractor={item => item.id.toString()}
-        renderItem={({item}) => (
-          <View style={styles.recipeItem}>
-            <Text style={styles.recipeTitle}>{item.title}</Text>
-          </View>
-        )}
-      />
+      {recipeInfoLoaded ? (
+        <IngredientsAndinstructions ingredients={ingredients} instructions={instructions}  />
+      ) : (
+        <FlatList
+          data={recipes}
+          keyExtractor={item => item.id.toString()}
+          renderItem={({item}) => (
+            <TouchableOpacity
+              style={styles.recipeItem}
+              onPress={() => {
+                setSelectedRecipeId(item.id);
+              }}>
+              <Text style={styles.recipeTitle}>{item.title}</Text>
+            </TouchableOpacity>
+          )}
+        />
+      )}
     </View>
   );
 };

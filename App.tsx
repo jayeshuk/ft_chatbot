@@ -18,9 +18,9 @@ export default function App() {
               iconName = 'chatbubbles-outline';
             }
 
-            // You can return any component that you like here!
             return <Icon name={iconName} size={size} color={color} />;
           },
+          headerShown:false,
         })}
       >
         <Tab.Screen name="Chatbot" component={ChatBot} />
