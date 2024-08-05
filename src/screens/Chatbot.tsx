@@ -39,6 +39,7 @@ const ChatbotScreen = () => {
   useEffect(() => {
     Voice.onSpeechResults = onSpeechResults;
     Voice.onSpeechError = onSpeechError;
+    Voice.onSpeechEnd = onSpeechEnd;
     return () => {
       Voice.destroy().then(Voice.removeAllListeners);
     };
@@ -56,6 +57,11 @@ const ChatbotScreen = () => {
     console.error(event.error);
     setIsListening(false);
   };
+
+  const onSpeechEnd = (event: any) => {
+    console.log("ENDED the Speech");
+    setIsListening(false)
+  }
 
   const startListening = async () => {
     try {
@@ -86,7 +92,7 @@ const ChatbotScreen = () => {
           apiKey: SPOONACULAR_API_KEY,
         },
       });
-
+      console.log("LFNKLJDNKLD", `${SPOONACULAR_API_URL}/complexSearch`)
       const recipeItems: Item[] = response.data.results.map((item: any) => ({
         id: item.id.toString(),
         image: item.image,
